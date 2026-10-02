@@ -1,0 +1,9 @@
+{
+  "name": "photo-website",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "build": "node build.js",
+    "publish-site": "node publish.js"
+  }
+}

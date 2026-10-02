@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Instrument+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <a class="wordmark display" href="index.html" data-site-name></a>
+    <nav>
+      <a href="index.html">index</a>
+      <a href="about.html">about</a>
+      <a href="contact.html">contact</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="intro">
+      <h1 class="display" id="title"></h1>
+      <div class="text">
+        <div class="meta" id="meta"></div>
+        <p id="description"></p>
+      </div>
+    </section>
+
+    <section class="sequence" id="sequence"></section>
+
+    <nav class="next">
+      <a href="index.html">&larr; index</a>
+      <a id="next-link"><span>next &rarr;</span> <span class="display" id="next-title"></span></a>
+    </nav>
+  </main>
+
+  <footer class="footer"></footer>
+
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true">
+    <img id="lightbox-img" alt="">
+    <button class="half prev" id="prev" aria-label="previous photo"></button>
+    <button class="half next-half" id="next" aria-label="next photo"></button>
+    <button class="close" id="close">close</button>
+    <div class="caption"><span id="caption-title"></span><span id="count"></span></div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/project.js"></script>
+  <script src="js/common.js"></script>
+</body>
+</html>

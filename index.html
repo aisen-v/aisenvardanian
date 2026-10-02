@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Instrument+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main class="home">
+    <header class="top">
+      <a class="wordmark display" href="index.html" data-site-name></a>
+      <nav>
+        <a href="index.html">index</a>
+        <a href="about.html">about</a>
+        <a href="contact.html">contact</a>
+      </nav>
+    </header>
+
+    <section class="index">
+      <ul id="list"></ul>
+    </section>
+
+    <footer class="footer"></footer>
+  </main>
+
+  <div class="preview" id="preview"><img alt=""></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/common.js"></script>
+  <script>
+    const list = document.getElementById("list");
+    const preview = document.getElementById("preview");
+    const previewImg = preview.querySelector("img");
+
+    PROJECTS.forEach((p, i) => {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.href = `project.html?p=${encodeURIComponent(p.slug)}`;
+      const cells = [
+        ["num", String(i + 1).padStart(2, "0")],
+        ["title display", p.title],
+        ["year", p.year || ""],
+        ["count", `${p.photos.length}`],
+      ];
+      for (const [cls, text] of cells) {
+        const span = document.createElement("span");
+        span.className = cls;
+        span.textContent = text;
+        a.append(span);
+      }
+      const cover = p.cover || p.photos[0];
+      if (cover) {
+        new Image().src = cover; // preload so the preview appears instantly
+        a.addEventListener("mouseenter", () => {
+          previewImg.src = cover;
+          preview.classList.add("show");
+        });
+        a.addEventListener("mouseleave", () => preview.classList.remove("show"));
+      }
+      li.append(a);
+      list.append(li);
+    });
+  </script>
+</body>
+</html>

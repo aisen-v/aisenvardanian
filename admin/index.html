@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin">
+  <header class="bar">
+    <span class="display wordmark">dashboard</span>
+    <span class="status" id="status" role="status"></span>
+    <a href="/" target="_blank" rel="noopener">view site ↗</a>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <button class="nav-item" id="nav-settings">settings</button>
+      <div class="label">projects</div>
+      <ol id="project-list"></ol>
+      <button class="add" id="add-project">+ new project</button>
+    </aside>
+
+    <main class="panel" id="panel"></main>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

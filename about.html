@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>about</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Instrument+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <a class="wordmark display" href="index.html" data-site-name></a>
+    <nav>
+      <a href="index.html">index</a>
+      <a href="about.html">about</a>
+      <a href="contact.html">contact</a>
+    </nav>
+  </header>
+
+  <main class="text-page">
+    <h1 class="display">about</h1>
+    <div class="body" id="about"></div>
+  </main>
+
+  <footer class="footer"></footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/common.js"></script>
+  <script>
+    // Blank lines in the about text become paragraph breaks.
+    const about = document.getElementById("about");
+    for (const para of (SITE.about || "").split(/\n\s*\n/)) {
+      if (!para.trim()) continue;
+      const p = document.createElement("p");
+      p.textContent = para.trim();
+      about.append(p);
+    }
+  </script>
+</body>
+</html>

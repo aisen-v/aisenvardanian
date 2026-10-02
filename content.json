@@ -1,0 +1,64 @@
+{
+  "site": {
+    "name": "your name",
+    "location": "city, country",
+    "timezone": "UTC",
+    "email": "hello@example.com",
+    "instagram": "yourhandle",
+    "about": "photographer based in city, country.\n\nreplace this with a few sentences about you: what you photograph, how you work, and what you are interested in.\n\nselected exhibitions, publications or clients can go here too.",
+    "lastUpdate": "2026-09-30"
+  },
+  "projects": [
+    {
+      "slug": "market",
+      "title": "market",
+      "year": "2021–",
+      "description": "since 2021, the project has regularly documented a local market, returning to it at different times of the year and under varying weather conditions.\n\nthe focus is on the everyday life of this space: interactions between people, working gestures, and the ways goods are displayed.",
+      "photos": []
+    },
+    {
+      "slug": "coast",
+      "title": "coast",
+      "year": "2023",
+      "description": "a week along the coast in late autumn, after the season had ended.",
+      "photos": [
+        "https://picsum.photos/seed/coast0/800/1000",
+        "https://picsum.photos/seed/coast1/1200/800",
+        "https://picsum.photos/seed/coast2/800/1000",
+        "https://picsum.photos/seed/coast3/800/1000",
+        "https://picsum.photos/seed/coast4/1200/800",
+        "https://picsum.photos/seed/coast5/800/1000"
+      ]
+    },
+    {
+      "slug": "street",
+      "title": "street view",
+      "year": "2022–2024",
+      "description": "walks through the city with no destination.",
+      "photos": [
+        "https://picsum.photos/seed/street0/800/1000",
+        "https://picsum.photos/seed/street1/1200/800",
+        "https://picsum.photos/seed/street2/800/1000",
+        "https://picsum.photos/seed/street3/800/1000",
+        "https://picsum.photos/seed/street4/1200/800",
+        "https://picsum.photos/seed/street5/800/1000",
+        "https://picsum.photos/seed/street6/800/1000",
+        "https://picsum.photos/seed/street7/1200/800"
+      ]
+    },
+    {
+      "slug": "portraits",
+      "title": "portraits",
+      "year": "ongoing",
+      "description": "people i meet.",
+      "photos": [
+        "https://picsum.photos/seed/portrait0/800/1000",
+        "https://picsum.photos/seed/portrait1/1200/800",
+        "https://picsum.photos/seed/portrait2/800/1000",
+        "https://picsum.photos/seed/portrait3/800/1000",
+        "https://picsum.photos/seed/portrait4/1200/800",
+        "https://picsum.photos/seed/portrait5/800/1000"
+      ]
+    }
+  ]
+}

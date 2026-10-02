@@ -1,0 +1,5 @@
+photos/.trash/
+*.tmp
+dist/
+.claude/
+node_modules/

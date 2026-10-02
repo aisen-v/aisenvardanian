@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>contact</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Instrument+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <a class="wordmark display" href="index.html" data-site-name></a>
+    <nav>
+      <a href="index.html">index</a>
+      <a href="about.html">about</a>
+      <a href="contact.html">contact</a>
+    </nav>
+  </header>
+
+  <main class="text-page">
+    <h1 class="display">contact</h1>
+    <div class="body">
+      <dl>
+        <dt>email</dt>      <dd><a id="email"></a></dd>
+        <dt>instagram</dt>  <dd><a id="instagram" target="_blank" rel="noopener"></a></dd>
+        <dt>based in</dt>   <dd id="location"></dd>
+      </dl>
+    </div>
+  </main>
+
+  <footer class="footer"></footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/common.js"></script>
+  <script>
+    const email = document.getElementById("email");
+    email.href = `mailto:${SITE.email}`;
+    email.textContent = SITE.email;
+    const ig = document.getElementById("instagram");
+    ig.href = `https://instagram.com/${SITE.instagram}`;
+    ig.textContent = `@${SITE.instagram}`;
+    document.getElementById("location").textContent = SITE.location;
+  </script>
+</body>
+</html>

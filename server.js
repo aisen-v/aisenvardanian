@@ -8,6 +8,8 @@ const http = require("node:http");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { execFileSync } = require("node:child_process");
+const { SLUG, ContentError, isValidPhoto, validate, renderDataJs } = require("./lib/content");
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT) || 8080;
@@ -34,9 +36,6 @@ const TYPES = {
 };
 const UPLOAD_EXT = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp" };
 
-const SLUG = /^[a-z0-9][a-z0-9-]{0,63}$/;
-const SITE_FIELDS = ["name", "location", "timezone", "email", "instagram", "about"];
-
 class HttpError extends Error {
   constructor(status, message) {
     super(message);
@@ -45,54 +44,6 @@ class HttpError extends Error {
 }
 
 // ---------- content ----------
-
-function isValidPhoto(p) {
-  if (typeof p !== "string" || p.length > 500) return false;
-  if (/^https:\/\/[^\s"'<>]+$/.test(p)) return true;
-  return /^photos\/[a-z0-9-]+\/[A-Za-z0-9._-]+$/.test(p) && !p.includes("..");
-}
-
-function str(v, max = 5000) {
-  if (v == null) return "";
-  if (typeof v !== "string") throw new HttpError(400, "expected text");
-  return v.slice(0, max);
-}
-
-// Returns a clean copy with only known fields, or throws.
-function validate(c) {
-  if (!c || typeof c !== "object" || !c.site || !Array.isArray(c.projects)) {
-    throw new HttpError(400, "invalid content");
-  }
-  const site = {};
-  for (const f of SITE_FIELDS) site[f] = str(c.site[f], f === "about" ? 20000 : 200);
-  if (site.timezone) {
-    try {
-      new Intl.DateTimeFormat("en", { timeZone: site.timezone });
-    } catch {
-      throw new HttpError(400, `unknown time zone "${site.timezone}"`);
-    }
-  }
-
-  const seen = new Set();
-  const projects = c.projects.map((p) => {
-    if (!p || !SLUG.test(p.slug)) throw new HttpError(400, `invalid project address "${p && p.slug}"`);
-    if (seen.has(p.slug)) throw new HttpError(400, `two projects use the address "${p.slug}"`);
-    seen.add(p.slug);
-    if (!Array.isArray(p.photos) || !p.photos.every(isValidPhoto)) {
-      throw new HttpError(400, `invalid photo list in "${p.slug}"`);
-    }
-    const out = {
-      slug: p.slug,
-      title: str(p.title, 200) || p.slug,
-      year: str(p.year, 100),
-      description: str(p.description, 20000),
-      photos: p.photos,
-    };
-    if (p.cover && p.photos.includes(p.cover)) out.cover = p.cover;
-    return out;
-  });
-  return { site, projects };
-}
 
 async function writeAtomic(file, text) {
   const tmp = `${file}.${process.pid}.tmp`;
@@ -108,13 +59,7 @@ async function saveContent(input) {
   const content = validate(input);
   content.site.lastUpdate = new Date().toISOString().slice(0, 10);
   await writeAtomic(CONTENT, JSON.stringify(content, null, 2) + "\n");
-  await writeAtomic(
-    DATA_JS,
-    "// Generated from content.json by the dashboard (node server.js → /admin).\n" +
-      "// Edits made directly here will be overwritten on the next save.\n\n" +
-      `const SITE = ${JSON.stringify(content.site, null, 2)};\n\n` +
-      `const PROJECTS = ${JSON.stringify(content.projects, null, 2)};\n`
-  );
+  await writeAtomic(DATA_JS, renderDataJs(content));
   return content;
 }
 
@@ -235,7 +180,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith("/api/")) await handleApi(req, res, url);
     else await serveStatic(req, res, url);
   } catch (e) {
-    const status = e instanceof HttpError ? e.status : 500;
+    const status = e instanceof HttpError ? e.status : e instanceof ContentError ? 400 : 500;
     if (status === 500) console.error(e);
     if (!res.headersSent) {
       if (url.pathname.startsWith("/api/")) send(res, status, { error: status === 500 ? "server error" : e.message });
@@ -246,6 +191,18 @@ const server = http.createServer(async (req, res) => {
     }
   }
 });
+
+// Bring in changes published from the online dashboard, if this is a git
+// checkout with a remote. Fast-forward only, so local work is never touched.
+try {
+  execFileSync("git", ["pull", "--ff-only", "--quiet"], { cwd: ROOT, stdio: "pipe", timeout: 20000 });
+  console.log("pulled latest changes from github");
+} catch {
+  console.log("couldn't pull from github (offline, or local changes not yet published) — using local files");
+}
+
+// js/data.js isn't stored in git, so make sure it matches content.json.
+require("node:fs").writeFileSync(DATA_JS, renderDataJs(validate(require(CONTENT))));
 
 server.listen(PORT, "127.0.0.1", () => {
   console.log(`site       http://localhost:${PORT}/`);

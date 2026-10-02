@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>dashboard</title>
+  <meta name="robots" content="noindex">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
@@ -13,11 +14,13 @@
   <header class="bar">
     <span class="display wordmark">dashboard</span>
     <span class="status" id="status" role="status"></span>
-    <a href="/" target="_blank" rel="noopener">view site ↗</a>
+    <button class="publish" id="publish" hidden disabled>publish</button>
+    <a href="../" target="_blank" rel="noopener">view site ↗</a>
+    <button class="link" id="sign-out" hidden>sign out</button>
   </header>
 
   <div class="layout">
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <button class="nav-item" id="nav-settings">settings</button>
       <div class="label">projects</div>
       <ol id="project-list"></ol>
@@ -27,6 +30,7 @@
     <main class="panel" id="panel"></main>
   </div>
 
+  <script src="storage.js"></script>
   <script src="admin.js"></script>
 </body>
 </html>

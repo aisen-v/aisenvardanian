@@ -1,4 +1,4 @@
-// Dashboard for editing content.json through server.js.
+// Dashboard for editing the site's content. See storage.js for where it saves.
 
 const MAX_SIZE = 2000; // long edge of uploaded photos, in px
 const QUALITY = 0.86;
@@ -6,6 +6,8 @@ const QUALITY = 0.86;
 const $ = (id) => document.getElementById(id);
 const panel = $("panel");
 const statusEl = $("status");
+const publishBtn = $("publish");
+const store = createStore();
 
 let content = null;
 let view = { type: "settings" }; // or { type: "project", project }
@@ -27,7 +29,6 @@ function h(tag, props = {}, ...children) {
   return el;
 }
 
-const photoSrc = (p) => (/^https?:/.test(p) ? p : `/${p}`);
 const pad = (i) => String(i + 1).padStart(2, "0");
 
 function slugify(text) {
@@ -53,26 +54,14 @@ function move(arr, from, to) {
   arr.splice(from < to ? to - 1 : to, 0, item);
 }
 
-async function api(method, url, body, type = "application/json") {
-  const headers = { "X-Dashboard": "1" };
-  if (body !== undefined) headers["Content-Type"] = type;
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body !== undefined && type === "application/json" ? JSON.stringify(body) : body,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `request failed (${res.status})`);
-  return data;
-}
-
 function setStatus(text, isError = false) {
   statusEl.textContent = text;
   statusEl.classList.toggle("error", isError);
 }
 
 // ---------- saving ----------
-// Changes save automatically after a short pause; saves never overlap.
+// Locally, changes save automatically after a short pause and saves never
+// overlap. Online, changes collect until you press publish.
 
 let dirty = false;
 let saveTimer;
@@ -80,19 +69,25 @@ let saving = Promise.resolve();
 
 function changed(delay = 600) {
   dirty = true;
+  if (!store.autosave) {
+    setStatus("unpublished changes");
+    publishBtn.disabled = false;
+    return;
+  }
   setStatus("editing…");
   clearTimeout(saveTimer);
   saveTimer = setTimeout(save, delay);
 }
 
 function save() {
+  if (!store.autosave) return Promise.resolve();
   clearTimeout(saveTimer);
   saving = saving.then(async () => {
     if (!dirty) return;
     dirty = false;
     setStatus("saving…");
     try {
-      const saved = await api("PUT", "/api/content", content);
+      const saved = await store.save(content);
       content.site.lastUpdate = saved.site.lastUpdate;
       const t = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       setStatus(`saved ${t}`);
@@ -102,6 +97,20 @@ function save() {
     }
   });
   return saving;
+}
+
+async function publish() {
+  publishBtn.disabled = true;
+  setStatus("publishing…");
+  try {
+    content.site.lastUpdate = new Date().toISOString().slice(0, 10);
+    await store.publish(content);
+    dirty = false;
+    setStatus("published. the live site updates in about a minute.");
+  } catch (e) {
+    publishBtn.disabled = false;
+    setStatus(`not published: ${e.message}`, true);
+  }
 }
 
 window.addEventListener("beforeunload", (e) => {
@@ -158,6 +167,16 @@ function textInput(obj, key, { event = "input", multiline = false, onChange, ...
   return el;
 }
 
+// A typo in the time zone would stop the site from building, so fall back to UTC.
+function checkTimezone(el) {
+  try {
+    if (el.value) new Intl.DateTimeFormat("en", { timeZone: el.value });
+  } catch {
+    el.value = content.site.timezone = "UTC";
+    setStatus("unknown time zone, kept UTC. pick one from the list", true);
+  }
+}
+
 function settingsPanel() {
   const s = content.site;
   const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
@@ -170,7 +189,7 @@ function settingsPanel() {
       { class: "fields" },
       field("name", textInput(s, "name")),
       field("location", textInput(s, "location"), { hint: "shown in the footer and on contact" }),
-      field("time zone", textInput(s, "timezone", { event: "change", list: "zones" }), {
+      field("time zone", textInput(s, "timezone", { event: "change", list: "zones", onChange: checkTimezone }), {
         hint: "for the footer clock, e.g. Europe/Paris",
       }),
       h("datalist", { id: "zones" }, zones.map((z) => h("option", { value: z }))),
@@ -311,7 +330,7 @@ function renderTiles(p, tiles = currentTiles(p)) {
           renderTiles(p);
         },
       },
-      h("div", { class: "thumb" }, h("img", { src: photoSrc(photo), alt: "", loading: "lazy" })),
+      h("div", { class: "thumb" }, h("img", { src: store.src(photo), alt: "", loading: "lazy" })),
       h(
         "div",
         { class: "row" },
@@ -363,7 +382,7 @@ async function deletePhoto(p, photo) {
   renderSidebar();
   await save();
   try {
-    await api("POST", "/api/trash", { path: photo });
+    await store.remove(photo);
   } catch (e) {
     setStatus(`photo removed, but couldn't move file to trash: ${e.message}`, true);
   }
@@ -371,14 +390,15 @@ async function deletePhoto(p, photo) {
 
 async function deleteProject(p) {
   const n = p.photos.length;
-  if (!confirm(`delete "${p.title || "untitled"}"${n ? ` and its ${n} photos` : ""}?\n\nphoto files are moved to photos/.trash`)) return;
+  const where = store.mode === "local" ? "photo files are moved to photos/.trash" : "photo files stay in the repository history";
+  if (!confirm(`delete "${p.title || "untitled"}"${n ? ` and its ${n} photos` : ""}?\n\n${where}`)) return;
   content.projects = content.projects.filter((x) => x !== p);
   show({ type: "settings" });
   changed(0);
   await save();
   for (const photo of p.photos) {
     try {
-      await api("POST", "/api/trash", { path: photo });
+      await store.remove(photo);
     } catch (e) {
       setStatus(`project deleted, but some files couldn't be moved to trash: ${e.message}`, true);
     }
@@ -451,7 +471,7 @@ async function addFiles(p, fileList) {
       const blob = await resize(job.file);
       job.state = "uploading…";
       renderTiles(p);
-      const { path } = await api("POST", `/api/photos/${encodeURIComponent(p.slug)}`, blob, "image/jpeg");
+      const path = await store.upload(p.slug, blob);
       p.photos.push(path);
       queue.splice(queue.indexOf(job), 1);
       changed(0);
@@ -471,18 +491,85 @@ async function addFiles(p, fileList) {
 
 // ---------- start ----------
 
+function signInPanel(error) {
+  const input = h("input", { type: "password", autocomplete: "off", placeholder: "github_pat_…" });
+  const remember = h("input", { type: "checkbox" });
+  const form = h(
+    "form",
+    {
+      class: "fields",
+      onsubmit: (e) => {
+        e.preventDefault();
+        if (!input.value.trim()) return;
+        store.signIn(input.value, remember.checked);
+        start();
+      },
+    },
+    field("access token", input, { wide: true }),
+    h("label", { class: "check" }, remember, " remember on this device"),
+    h("div", { class: "wide" }, h("button", { class: "primary", type: "submit" }, "connect"))
+  );
+  const tokenUrl = "https://github.com/settings/personal-access-tokens/new";
+  return h(
+    "div",
+    { class: "signin" },
+    h("h1", { class: "display" }, "connect"),
+    h("p", {}, `this dashboard saves straight to the github repository ${store.repo}. to unlock it, paste a github access token.`),
+    h(
+      "ol",
+      {},
+      h("li", {}, "open ", h("a", { href: tokenUrl, target: "_blank", rel: "noopener" }, "github → new fine-grained token ↗")),
+      h("li", {}, "repository access: only select repositories → ", h("b", {}, store.repo.split("/")[1])),
+      h("li", {}, "repository permissions → contents: read and write"),
+      h("li", {}, "generate the token, copy it and paste it below")
+    ),
+    error && h("p", { class: "error" }, error),
+    form
+  );
+}
+
+function setSignedInUi(signedIn) {
+  $("sidebar").hidden = !signedIn;
+  publishBtn.hidden = store.autosave || !signedIn;
+  $("sign-out").hidden = store.autosave || !signedIn;
+}
+
+async function start() {
+  if (store.needsSignIn()) {
+    setSignedInUi(false);
+    panel.replaceChildren(signInPanel());
+    panel.querySelector("input").focus();
+    return;
+  }
+  setSignedInUi(true);
+  setStatus("loading…");
+  try {
+    content = await store.load();
+  } catch (e) {
+    if ([401, 403, 404].includes(e.status)) {
+      store.signOut();
+      setSignedInUi(false);
+      setStatus("");
+      panel.replaceChildren(signInPanel(e.message));
+      return;
+    }
+    setStatus("couldn't load", true);
+    panel.replaceChildren(h("p", { class: "empty" }, e.message));
+    return;
+  }
+  setStatus(store.autosave ? "" : `connected to ${store.repo}`);
+  if (content.projects.length) view = { type: "project", project: content.projects[0] };
+  show(view);
+}
+
 $("nav-settings").addEventListener("click", () => show({ type: "settings" }));
 $("add-project").addEventListener("click", newProject);
+publishBtn.addEventListener("click", publish);
+$("sign-out").addEventListener("click", () => {
+  if (dirty && !confirm("you have unpublished changes. sign out anyway?")) return;
+  dirty = false;
+  store.signOut();
+  location.reload();
+});
 
-api("GET", "/api/content")
-  .then((c) => {
-    content = c;
-    if (content.projects.length) view = { type: "project", project: content.projects[0] };
-    show(view);
-  })
-  .catch(() => {
-    setStatus("can't reach the server", true);
-    panel.replaceChildren(
-      h("p", { class: "empty" }, "the dashboard needs the local server. in the project folder, run: node server.js")
-    );
-  });
+start();

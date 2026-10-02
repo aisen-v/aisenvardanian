@@ -27,6 +27,32 @@ body.admin {
 .bar .wordmark { font-size: 22px; }
 .bar .status { flex: 1; color: var(--muted); }
 .bar .status.error { color: #b3261e; }
+.bar .link { background: none; border: 0; padding: 0; color: var(--muted); }
+.bar .link:hover { color: var(--fg); }
+
+.publish,
+.primary {
+  background: var(--fg);
+  color: var(--bg) !important;
+  border: 0;
+  padding: 7px 16px;
+  border-radius: 2px;
+}
+.publish:disabled { opacity: 0.3; cursor: default; }
+
+[hidden] { display: none !important; }
+
+/* ---------- sign in (github mode) ---------- */
+
+.signin { max-width: 560px; }
+.signin p { margin-bottom: 16px; line-height: 1.7; }
+.signin ol { margin: 0 0 28px 18px; line-height: 2; }
+.signin a { text-decoration: underline; }
+.signin .error { color: #b3261e; }
+.check { display: flex; align-items: center; gap: 8px; color: var(--muted); cursor: pointer; }
+.check input { accent-color: var(--fg); }
+
+.layout:has(.sidebar[hidden]) { grid-template-columns: 1fr; }
 
 /* ---------- layout ---------- */
 

@@ -3,3 +3,4 @@ photos/.trash/
 dist/
 .claude/
 node_modules/
+js/data.js

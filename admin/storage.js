@@ -7,19 +7,15 @@
 //
 // On localhost, add ?github=owner/repo to the address to use github mode.
 
+// The repository the online dashboard saves to, whatever domain the site is on.
+const GITHUB_REPO = "aisen-v/aisenvardanian";
+
 function createStore() {
   const forced = new URLSearchParams(location.search).get("github");
   const isLocal = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
   if (isLocal && !forced) return localStore();
 
-  let owner, repo;
-  if (forced) [owner, repo] = forced.split("/");
-  else {
-    // https://<owner>.github.io/<repo>/admin/  or  https://<owner>.github.io/admin/
-    owner = location.hostname.split(".")[0];
-    const first = location.pathname.split("/")[1];
-    repo = first && first !== "admin" ? first : `${owner}.github.io`;
-  }
+  const [owner, repo] = (forced || GITHUB_REPO).split("/");
   return githubStore(owner, repo);
 }
 

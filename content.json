@@ -14,37 +14,23 @@
       "title": "paris essentials",
       "year": "2021–",
       "description": "paris essentials",
-      "photos": []
+      "photos": [
+        "photos/paris-essentials/muqu2bo8-cc95e3.jpg"
+      ]
     },
     {
       "slug": "coast",
-      "title": "coast",
+      "title": "bw",
       "year": "2023",
-      "description": "a week along the coast in late autumn, after the season had ended.",
-      "photos": [
-        "https://picsum.photos/seed/coast0/800/1000",
-        "https://picsum.photos/seed/coast1/1200/800",
-        "https://picsum.photos/seed/coast2/800/1000",
-        "https://picsum.photos/seed/coast3/800/1000",
-        "https://picsum.photos/seed/coast4/1200/800",
-        "https://picsum.photos/seed/coast5/800/1000"
-      ]
+      "description": "",
+      "photos": []
     },
     {
       "slug": "street",
       "title": "street view",
       "year": "2022–2024",
       "description": "walks through the city with no destination.",
-      "photos": [
-        "https://picsum.photos/seed/street0/800/1000",
-        "https://picsum.photos/seed/street1/1200/800",
-        "https://picsum.photos/seed/street2/800/1000",
-        "https://picsum.photos/seed/street3/800/1000",
-        "https://picsum.photos/seed/street4/1200/800",
-        "https://picsum.photos/seed/street5/800/1000",
-        "https://picsum.photos/seed/street6/800/1000",
-        "https://picsum.photos/seed/street7/1200/800"
-      ]
+      "photos": []
     },
     {
       "slug": "portraits",

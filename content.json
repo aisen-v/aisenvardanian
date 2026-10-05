@@ -6,7 +6,7 @@
     "email": "aisenvardanian@gmail.com",
     "instagram": "aisenvardanian",
     "about": "photographer based in city, country.\n\nreplace this with a few sentences about you: what you photograph, how you work, and what you are interested in.\n\nselected exhibitions, publications or clients can go here too.",
-    "lastUpdate": "2026-10-02"
+    "lastUpdate": "2026-10-05"
   },
   "projects": [
     {
@@ -26,25 +26,11 @@
       "photos": []
     },
     {
-      "slug": "street",
-      "title": "street view",
-      "year": "2022–2024",
-      "description": "walks through the city with no destination.",
+      "slug": "exploring-human-solitude",
+      "title": "exploring human solitude",
+      "year": "",
+      "description": "",
       "photos": []
-    },
-    {
-      "slug": "portraits",
-      "title": "portraits",
-      "year": "ongoing",
-      "description": "people i meet.",
-      "photos": [
-        "https://picsum.photos/seed/portrait0/800/1000",
-        "https://picsum.photos/seed/portrait1/1200/800",
-        "https://picsum.photos/seed/portrait2/800/1000",
-        "https://picsum.photos/seed/portrait3/800/1000",
-        "https://picsum.photos/seed/portrait4/1200/800",
-        "https://picsum.photos/seed/portrait5/800/1000"
-      ]
     }
   ]
 }

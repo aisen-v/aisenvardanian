@@ -58,3 +58,7 @@ Every push to `main` runs `.github/workflows/deploy.yml`: `node build.js` checks
 - `server.js`: local server
 - `build.js`: builds `dist/`
 - `publish.js`: commits and pushes local changes
+
+## Garmin connector
+
+`garmin-connector/` is a separate, private tool (not part of the website, and not deployed): a CLI, JSON API and MCP server for reading your own Garmin Connect data. See [garmin-connector/README.md](garmin-connector/README.md).

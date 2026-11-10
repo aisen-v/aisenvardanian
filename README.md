@@ -61,4 +61,4 @@ Every push to `main` runs `.github/workflows/deploy.yml`: `node build.js` checks
 
 ## Garmin connector
 
-`garmin-connector/` is a separate, private tool (not part of the website, and not deployed): a CLI, JSON API and MCP server for reading your own Garmin Connect data. See [garmin-connector/README.md](garmin-connector/README.md).
+`garmin-connector/` is a separate, private tool (not part of the website, and not deployed): a CLI, JSON API and MCP server for reading your own Garmin data, through the official Garmin Connect Developer Program API or the Garmin Connect app sign-in. See [garmin-connector/README.md](garmin-connector/README.md).

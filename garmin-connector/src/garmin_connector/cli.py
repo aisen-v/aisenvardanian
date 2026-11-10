@@ -20,10 +20,12 @@ import secrets
 import sys
 from pathlib import Path
 
-from . import __version__, auth, data
+from . import __version__, auth, backend, data
 
 
 def _cmd_login(args) -> int:
+    if backend.is_official():
+        return _official_login(args)
     email = args.email or os.getenv("GARMIN_EMAIL") or input("Garmin email: ").strip()
     password = os.getenv("GARMIN_PASSWORD") or getpass.getpass("Garmin password: ")
     client = auth.login(
@@ -37,13 +39,50 @@ def _cmd_login(args) -> int:
     return 0
 
 
+def _official_login(args) -> int:
+    from .official import oauth
+    from .official.endpoints import get_client
+
+    oauth.interactive_login(open_browser=not args.no_browser)
+    client = get_client()
+    user_id = client.user_id()
+    oauth.remember_user_id(user_id)
+    print(f"Connected Garmin user {user_id}.")
+    print(f"Permissions granted: {', '.join(client.permissions()) or 'none reported'}")
+    print(f"Tokens saved to {oauth.tokens_path()}.")
+    return 0
+
+
 def _cmd_logout(args) -> int:
+    if backend.is_official():
+        from .official import oauth
+        from .official.endpoints import get_client
+
+        if args.deregister:
+            get_client().deregister()
+            print("Revoked this app's access to your Garmin account.")
+        oauth.forget_tokens()
+        print(f"Removed {oauth.tokens_path()}.")
+        return 0
     auth.logout()
     print(f"Removed the saved session from {auth.token_dir()}.")
     return 0
 
 
 def _cmd_status(args) -> int:
+    print(f"Backend: {backend.name()}")
+    if backend.is_official():
+        from .official.endpoints import profile
+
+        info = profile()
+        print(f"Signed in as Garmin user {info['user_id']}.")
+        print(f"Permissions: {', '.join(info['permissions']) or 'none reported'}")
+        print("Stored data:")
+        for kind, st in info["stored"].items() or []:
+            print(f"  {kind:<18} {st['count']:>6}  {st['first_day']} .. {st['last_day']}  (last received {st['last_received']})")
+        if not info["stored"]:
+            print("  nothing yet: run `garmin-connector sync` or `garmin-connector backfill`")
+        return 0
     try:
         g = auth.get_client()
     except auth.NotSignedIn as e:
@@ -53,7 +92,20 @@ def _cmd_status(args) -> int:
     return 0
 
 
+def _cmd_backfill(args) -> int:
+    from .official.endpoints import backfill
+
+    result = backfill(args.days, args.type or None)
+    for kind, outcome in result.items():
+        print(f"  {kind:<18} {outcome}")
+    print("Garmin sends the history to your webhook over the next minutes to hours;"
+          " `garmin-connector serve` must be reachable at the URL set in the developer portal.")
+    return 0
+
+
 def _cmd_download(args) -> int:
+    if backend.is_official():
+        raise ValueError("activity file downloads need the unofficial backend (GARMIN_BACKEND=unofficial)")
     blob, filename = data.download_activity(args.activity_id, args.format)
     out = Path(args.output or filename)
     out.write_bytes(blob)
@@ -107,7 +159,8 @@ def _endpoint_runner(fn):
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="garmin-connector",
-        description="Personal connector to your Garmin Connect data.",
+        description="Personal connector to your Garmin Connect data "
+        f"(backend: {backend.name()}; set GARMIN_BACKEND to change).",
     )
     parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument("-v", "--verbose", action="store_true", help="log HTTP details")
@@ -116,9 +169,13 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("login", help="sign in and save a session")
     p.add_argument("--email")
     p.add_argument("--cn", action="store_true", help="account is on Garmin China (garmin.cn)")
+    p.add_argument("--no-browser", action="store_true", help="official API: just print the consent URL")
     p.set_defaults(run=_cmd_login)
 
-    sub.add_parser("logout", help="forget the saved session").set_defaults(run=_cmd_logout)
+    p = sub.add_parser("logout", help="forget the saved session")
+    p.add_argument("--deregister", action="store_true",
+                   help="official API: also revoke the app's access at Garmin")
+    p.set_defaults(run=_cmd_logout)
     sub.add_parser("status", help="check the saved session works").set_defaults(run=_cmd_status)
 
     p = sub.add_parser("mcp", help="run the MCP server over stdio (Claude Desktop / Claude Code)")
@@ -142,7 +199,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("-o", "--output", help="file to write (default activity_<id>.<ext>)")
     p.set_defaults(run=_cmd_download)
 
-    for name, fn in data.ENDPOINTS.items():
+    if backend.is_official():
+        from .official.api import SUMMARY_TYPES
+
+        p = sub.add_parser("backfill", help="official API: ask Garmin to send older history")
+        p.add_argument("--days", type=int, default=30)
+        p.add_argument("--type", action="append", choices=list(SUMMARY_TYPES),
+                       help="only this summary type (repeatable; default all)")
+        p.set_defaults(run=_cmd_backfill)
+
+    for name, fn in backend.endpoints().items():
         doc = (fn.__doc__ or "").strip().splitlines()[0]
         p = sub.add_parser(name.replace("_", "-"), help=doc, description=doc)
         for pname, param in inspect.signature(fn).parameters.items():

@@ -1,4 +1,5 @@
-"""MCP server and JSON API over the endpoints in ``data.py``.
+"""MCP server and JSON API over the endpoints of the active backend
+(``data.py`` for the unofficial one, ``official/endpoints.py`` for the official one).
 
 * ``build_mcp()`` registers every endpoint as a read-only MCP tool.
 * ``build_http_app()`` serves, on one port:
@@ -6,6 +7,7 @@
     - ``/api``                    lists the JSON endpoints
     - ``/api/<name>?param=value`` one endpoint as JSON
     - ``/api/activity/<id>/download?format=fit|tcx|gpx|kml|csv``
+    - ``/garmin/webhook``         push / ping notifications from Garmin (official backend)
     - ``/health``                 liveness check (no token needed)
   Everything except ``/health`` requires the access token when one is set.
 """
@@ -28,10 +30,19 @@ from mcp_types import ToolAnnotations
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from . import data
+from . import backend, data
 from .auth import NotSignedIn
 
 log = logging.getLogger("garmin_connector")
+
+OFFICIAL_INSTRUCTIONS = """\
+Read-only access to the user's own Garmin data through Garmin's official API
+(daily totals, sleep, stress/Body Battery, HRV, SpO2, respiration, VO2 max,
+body composition, activities). Data is served from a local store that Garmin
+fills when the watch syncs. If a day comes back empty, call sync (last few
+days) and try again. Dates accept YYYY-MM-DD, 'today', 'yesterday' or a number
+of days ago ('7'). Activity types are Garmin keys such as RUNNING or CYCLING.
+"""
 
 INSTRUCTIONS = """\
 Read-only access to the user's own Garmin Connect data (sleep, heart rate, HRV,
@@ -45,9 +56,14 @@ LOCAL_HOSTS = ("127.0.0.1", "localhost", "::1")
 
 
 def build_mcp() -> MCPServer:
-    mcp = MCPServer(name="garmin", title="Garmin Connect", instructions=INSTRUCTIONS)
+    official = backend.is_official()
+    mcp = MCPServer(
+        name="garmin",
+        title="Garmin Connect",
+        instructions=OFFICIAL_INSTRUCTIONS if official else INSTRUCTIONS,
+    )
     readonly = ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=True)
-    for name, fn in data.ENDPOINTS.items():
+    for name, fn in backend.endpoints().items():
         mcp.tool(name=name, annotations=readonly, structured_output=False)(_explain_errors(fn))
     return mcp
 
@@ -119,7 +135,8 @@ async def _call(fn, kwargs) -> Response:
         return JSONResponse({"error": str(e)}, status_code=401)
     except Exception as e:  # Garmin errors: rate limits, outages, missing data
         log.exception("Garmin request failed")
-        status = 429 if "TooManyRequests" in type(e).__name__ else 502
+        rate_limited = "TooManyRequests" in type(e).__name__ or getattr(e, "status", None) == 429
+        status = 429 if rate_limited else 502
         return JSONResponse({"error": f"{type(e).__name__}: {e}"}, status_code=status)
     return Response(json.dumps(result, default=str), media_type="application/json")
 
@@ -131,16 +148,22 @@ def _add_api_routes(mcp: MCPServer) -> None:
 
     @mcp.custom_route("/api", methods=["GET"])
     async def index(request: Request) -> Response:
-        eps = {f"/api/{n}": _describe(f) for n, f in data.ENDPOINTS.items()}
+        eps = {f"/api/{n}": _describe(f) for n, f in backend.endpoints().items()}
+        if backend.is_official():
+            return JSONResponse({"backend": "official", "endpoints": eps})
         eps["/api/activity/{activity_id}/download"] = {
             "description": "Download an activity file (fit = original .zip)",
             "params": {"format": {"type": "str", "required": False, "default": "fit",
                                   "choices": list(data.DOWNLOAD_FORMATS)}},
         }
-        return JSONResponse({"endpoints": eps})
+        return JSONResponse({"backend": "unofficial", "endpoints": eps})
 
     @mcp.custom_route("/api/activity/{activity_id:int}/download", methods=["GET"])
     async def download(request: Request) -> Response:
+        if backend.is_official():
+            return JSONResponse(
+                {"error": "file downloads need the unofficial backend"}, status_code=404
+            )
         aid = request.path_params["activity_id"]
         fmt = request.query_params.get("format", "fit")
         try:
@@ -160,9 +183,37 @@ def _add_api_routes(mcp: MCPServer) -> None:
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
+    @mcp.custom_route("/garmin/webhook", methods=["POST"])
+    async def webhook(request: Request) -> Response:
+        """Push and ping notifications from Garmin (official backend).
+
+        Answers 200 straight away and stores the data in the background, as
+        Garmin expects a quick reply.
+        """
+        if not backend.is_official():
+            return JSONResponse({"error": "webhooks need the official backend"}, status_code=404)
+        try:
+            payload = await request.json()
+        except Exception:
+            return JSONResponse({"error": "body must be JSON"}, status_code=400)
+        if not isinstance(payload, dict):
+            return JSONResponse({"error": "body must be a JSON object"}, status_code=400)
+
+        from starlette.background import BackgroundTask
+
+        from .official.endpoints import handle_notification
+
+        def ingest():
+            try:
+                log.info("stored from Garmin: %s", handle_notification(payload))
+            except Exception:
+                log.exception("could not store Garmin notification")
+
+        return Response(status_code=200, background=BackgroundTask(anyio.to_thread.run_sync, ingest))
+
     @mcp.custom_route("/api/{name}", methods=["GET"])
     async def endpoint(request: Request) -> Response:
-        fn = data.ENDPOINTS.get(request.path_params["name"])
+        fn = backend.endpoints().get(request.path_params["name"])
         if fn is None:
             return JSONResponse({"error": "no such endpoint; see /api"}, status_code=404)
         try:
